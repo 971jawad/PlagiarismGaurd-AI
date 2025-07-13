@@ -1,6 +1,9 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { z } from "zod";
+import bcrypt from 'bcrypt';
+import passport from "./auth";
+import { requireAuth, optionalAuth } from "./auth";
 import { storage } from "./storage";
 import { fileProcessor } from "./services/fileProcessor";
 import { plagiarismDetector } from "./services/plagiarismDetector";
@@ -10,8 +13,85 @@ import { qaTestSuite } from "./services/qaTestSuite";
 import { insertDocumentSchema, insertPlagiarismReportSchema, type ParaphraseSuggestion } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // File upload and analysis endpoint
-  app.post('/api/analyze', fileProcessor.getUploadMiddleware(), async (req, res) => {
+  // Authentication routes
+  app.get('/auth/google', (req, res) => {
+    if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+      passport.authenticate('google', { scope: ['profile', 'email'] })(req, res);
+    } else {
+      res.status(400).json({ error: 'Google OAuth not configured' });
+    }
+  });
+  
+  app.get('/auth/google/callback', (req, res) => {
+    if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+      passport.authenticate('google', { failureRedirect: '/login' })(req, res, () => {
+        res.redirect('/');
+      });
+    } else {
+      res.redirect('/login');
+    }
+  });
+  
+  app.post('/auth/register', async (req, res) => {
+    try {
+      const { username, email, password } = req.body;
+      
+      // Check if user already exists
+      const existingUser = await storage.getUserByEmail(email);
+      if (existingUser) {
+        return res.status(400).json({ error: 'User with this email already exists' });
+      }
+      
+      // Hash password
+      const hashedPassword = await bcrypt.hash(password, 10);
+      
+      // Create user
+      const user = await storage.createUser({
+        username,
+        email,
+        password: hashedPassword,
+        plan: 'basic'
+      });
+      
+      // Log user in
+      req.login(user, (err) => {
+        if (err) {
+          return res.status(500).json({ error: 'Login failed after registration' });
+        }
+        res.json({ user: { id: user.id, username: user.username, email: user.email, plan: user.plan } });
+      });
+    } catch (error) {
+      console.error('Registration error:', error);
+      res.status(500).json({ error: 'Registration failed' });
+    }
+  });
+  
+  app.post('/auth/login', 
+    passport.authenticate('local', { failureRedirect: '/login' }),
+    (req, res) => {
+      res.json({ user: req.user });
+    }
+  );
+  
+  app.post('/auth/logout', (req, res) => {
+    req.logout((err) => {
+      if (err) {
+        return res.status(500).json({ error: 'Logout failed' });
+      }
+      res.json({ message: 'Logged out successfully' });
+    });
+  });
+  
+  app.get('/auth/user', (req, res) => {
+    if (req.user) {
+      res.json({ user: req.user });
+    } else {
+      res.json({ user: null });
+    }
+  });
+
+  // File upload and analysis endpoint (now with optional auth)
+  app.post('/api/analyze', optionalAuth, fileProcessor.getUploadMiddleware(), async (req, res) => {
     try {
       let text = '';
       let filename = '';
@@ -42,7 +122,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Create document record
       const document = await storage.createDocument({
-        userId: null, // Anonymous for now
+        userId: req.user?.id || null, // Associate with authenticated user if available
         filename,
         originalText: text,
         fileType,

@@ -15,6 +15,14 @@ import About from "@/pages/about";
 import Integrations from "@/pages/integrations";
 import QATest from "@/pages/qa-test";
 import NotFound from "@/pages/not-found";
+import Documentation from "@/pages/docs";
+import Contact from "@/pages/contact";
+import SystemStatus from "@/pages/status";
+import Privacy from "@/pages/privacy";
+import Terms from "@/pages/terms";
+import Security from "@/pages/security";
+import Compliance from "@/pages/compliance";
+import Login from "@/pages/login";
 
 function Router() {
   return (
@@ -30,6 +38,14 @@ function Router() {
           <Route path="/about" component={About} />
           <Route path="/integrations" component={Integrations} />
           <Route path="/qa-test" component={QATest} />
+          <Route path="/docs" component={Documentation} />
+          <Route path="/contact" component={Contact} />
+          <Route path="/status" component={SystemStatus} />
+          <Route path="/privacy" component={Privacy} />
+          <Route path="/terms" component={Terms} />
+          <Route path="/security" component={Security} />
+          <Route path="/compliance" component={Compliance} />
+          <Route path="/login" component={Login} />
           <Route component={NotFound} />
         </Switch>
       </main>
