@@ -41,14 +41,10 @@ export default function Login() {
           return;
         }
 
-        const response = await apiRequest('/auth/register', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            username: formData.username,
-            email: formData.email,
-            password: formData.password
-          })
+        const response = await apiRequest('POST', '/auth/register', {
+          username: formData.username,
+          email: formData.email,
+          password: formData.password
         });
 
         if (response.ok) {
@@ -67,13 +63,9 @@ export default function Login() {
         }
       } else {
         // Login
-        const response = await apiRequest('/auth/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            email: formData.email,
-            password: formData.password
-          })
+        const response = await apiRequest('POST', '/auth/login', {
+          email: formData.email,
+          password: formData.password
         });
 
         if (response.ok) {
