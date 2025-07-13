@@ -24,9 +24,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { data: user, isLoading: loading, refetch } = useQuery({
     queryKey: ['auth', 'user'],
     queryFn: async () => {
-      const response = await apiRequest('/auth/user');
-      const data = await response.json();
-      return data.user;
+      try {
+        const response = await apiRequest('GET', '/auth/user');
+        const data = await response.json();
+        return data.user;
+      } catch (error) {
+        console.error('Auth check failed:', error);
+        return null;
+      }
     },
     retry: false,
     staleTime: 5 * 60 * 1000, // 5 minutes
@@ -34,7 +39,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     try {
-      await apiRequest('/auth/logout', { method: 'POST' });
+      await apiRequest('POST', '/auth/logout');
       queryClient.setQueryData(['auth', 'user'], null);
       queryClient.removeQueries({ queryKey: ['auth'] });
     } catch (error) {
